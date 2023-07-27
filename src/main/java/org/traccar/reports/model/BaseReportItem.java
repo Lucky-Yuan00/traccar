@@ -40,18 +40,18 @@ public class BaseReportItem {
         this.deviceName = deviceName;
     }
 
-    private double distance;
+//    private double distance;
+
+    private final DistanceCalculator distanceCalculator = new DistanceCalculator();
 
     public double getDistance() {
-        return distance;
+       // return distance;
+        return distanceCalculator.getDistance();
     }
 
     public void setDistance(double distance) {
-        this.distance = distance;
-    }
-
-    public void addDistance(double distance) {
-        this.distance += distance;
+       // this.distance = distance;
+        distanceCalculator.setDistance(distance);
     }
 
     private double averageSpeed;
@@ -75,10 +75,6 @@ public class BaseReportItem {
     }
 
     private double spentFuel;
-
-    public double getSpentFuel() {
-        return spentFuel;
-    }
 
     public void setSpentFuel(double spentFuel) {
         this.spentFuel = spentFuel;

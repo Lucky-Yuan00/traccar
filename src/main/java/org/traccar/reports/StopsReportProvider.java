@@ -17,6 +17,12 @@
 package org.traccar.reports;
 
 import org.apache.poi.ss.util.WorkbookUtil;
+import org.jxls.area.Area;
+import org.jxls.builder.xls.XlsCommentAreaBuilder;
+import org.jxls.common.CellRef;
+import org.jxls.formula.StandardFormulaProcessor;
+import org.jxls.transform.Transformer;
+import org.jxls.util.TransformerFactory;
 import org.traccar.config.Config;
 import org.traccar.config.Keys;
 import org.traccar.helper.model.DeviceUtil;
@@ -41,6 +47,7 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
+import java.util.List;
 
 public class StopsReportProvider {
 
@@ -70,7 +77,7 @@ public class StopsReportProvider {
     public void getExcel(
             OutputStream outputStream, long userId, Collection<Long> deviceIds, Collection<Long> groupIds,
             Date from, Date to) throws StorageException, IOException {
-        reportUtils.checkPeriodLimit(from, to);
+            checkPeriodLimit(from, to);
 
         ArrayList<DeviceReportSection> devicesStops = new ArrayList<>();
         ArrayList<String> sheetNames = new ArrayList<>();
@@ -97,8 +104,28 @@ public class StopsReportProvider {
             context.putVar("sheetNames", sheetNames);
             context.putVar("from", from);
             context.putVar("to", to);
-            reportUtils.processTemplateWithSheets(inputStream, outputStream, context);
+            processTemplateWithSheets(inputStream, outputStream, context);
         }
     }
 
+    public void checkPeriodLimit(Date from, Date to) {
+        long limit = config.getLong(Keys.REPORT_PERIOD_LIMIT) * 1000;
+        if (limit > 0 && to.getTime() - from.getTime() > limit) {
+            throw new IllegalArgumentException("Time period exceeds the limit");
+        }
+    }
+
+    public void processTemplateWithSheets(
+            InputStream templateStream, OutputStream targetStream, org.jxls.common.Context context) throws IOException {
+
+        Transformer transformer = TransformerFactory.createTransformer(templateStream, targetStream);
+        List<Area> xlsAreas = new XlsCommentAreaBuilder(transformer).build();
+        for (Area xlsArea : xlsAreas) {
+            xlsArea.applyAt(new CellRef(xlsArea.getStartCellRef().getCellName()), context);
+            xlsArea.setFormulaProcessor(new StandardFormulaProcessor());
+            xlsArea.processFormulas();
+        }
+        transformer.deleteSheet(xlsAreas.get(0).getStartCellRef().getSheetName());
+        transformer.write();
+    }
 }
