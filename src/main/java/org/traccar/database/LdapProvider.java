@@ -180,7 +180,7 @@ public class LdapProvider {
         }
         return false;
     }
-
+/*
     public String encodeForLdap(String input) {
         if (input == null) {
             return null;
@@ -209,6 +209,37 @@ public class LdapProvider {
             }
         }
         return sb.toString();
+    }
+*/
+public String encodeForLdap(String input) {
+    if (input == null) {
+        return null;
+    }
+
+    StringBuilder sb = new StringBuilder();
+    for (char c : input.toCharArray()) {
+        String encodedValue = getLdapEncodedValue(c);
+        sb.append(encodedValue != null ? encodedValue : c);
+    }
+
+    return sb.toString();
+}
+
+    private String getLdapEncodedValue(char c) {
+        switch (c) {
+            case '\\':
+                return "\\5c";
+            case '*':
+                return "\\2a";
+            case '(':
+                return "\\28";
+            case ')':
+                return "\\29";
+            case '\0':
+                return "\\00";
+            default:
+                return null;
+        }
     }
 
 }

@@ -53,7 +53,7 @@ public class HuabaoProtocolDecoder extends BaseProtocolDecoder {
     public static final int MSG_HEARTBEAT = 0x0002;
     public static final int MSG_HEARTBEAT_2 = 0x0506;
     public static final int MSG_TERMINAL_REGISTER = 0x0100;
-    public static final int MSG_TERMINAL_REGISTER_RESPONSE = 0x8100;
+    public static final int MSG_TERM_REGIS_RESP = 0x8100;
     public static final int MSG_TERMINAL_CONTROL = 0x8105;
     public static final int MSG_TERMINAL_AUTH = 0x0102;
     public static final int MSG_LOCATION_REPORT = 0x0200;
@@ -223,7 +223,7 @@ public class HuabaoProtocolDecoder extends BaseProtocolDecoder {
                 response.writeByte(RESULT_SUCCESS);
                 response.writeBytes(decodeId(id).getBytes(StandardCharsets.US_ASCII));
                 channel.writeAndFlush(new NetworkMessage(
-                        formatMessage(MSG_TERMINAL_REGISTER_RESPONSE, id, false, response), remoteAddress));
+                        formatMessage(MSG_TERM_REGIS_RESP, id, false, response), remoteAddress));
             }
 
         } else if (type == MSG_TERMINAL_AUTH || type == MSG_HEARTBEAT || type == MSG_HEARTBEAT_2 || type == MSG_PHOTO) {
@@ -262,7 +262,7 @@ public class HuabaoProtocolDecoder extends BaseProtocolDecoder {
                 response.writeByte(calendar.get(Calendar.MINUTE));
                 response.writeByte(calendar.get(Calendar.SECOND));
                 channel.writeAndFlush(new NetworkMessage(
-                        formatMessage(MSG_TERMINAL_REGISTER_RESPONSE, id, false, response), remoteAddress));
+                        formatMessage(MSG_TERM_REGIS_RESP, id, false, response), remoteAddress));
             }
 
         } else if (type == MSG_ACCELERATION) {

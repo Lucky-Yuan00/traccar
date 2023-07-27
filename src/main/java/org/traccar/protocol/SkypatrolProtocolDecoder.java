@@ -58,7 +58,7 @@ public class SkypatrolProtocolDecoder extends BaseProtocolDecoder {
         return sign * (degrees + minutes / 60);
     }
 
-    @Override
+ /*   @Override
     protected Object decode(
             Channel channel, SocketAddress remoteAddress, Object msg) throws Exception {
 
@@ -193,5 +193,142 @@ public class SkypatrolProtocolDecoder extends BaseProtocolDecoder {
 
         return null;
     }
+    */
+
+    protected Object decode(Channel channel, SocketAddress remoteAddress, Object msg) throws Exception {
+        ByteBuf buf = (ByteBuf) msg;
+
+        int apiNumber = buf.readUnsignedShort();
+        int commandType = buf.readUnsignedByte();
+        int messageType = BitUtil.from(buf.readUnsignedByte(), 4);
+        long mask = defaultMask;
+        if (buf.readUnsignedByte() == 4) {
+            mask = buf.readUnsignedInt();
+        }
+
+        if (apiNumber == 5 && commandType == 2 && messageType == 1 && BitUtil.check(mask, 0)) {
+            return decodeBinaryPosition(channel, remoteAddress, buf, mask);
+        }
+
+        return null;
+    }
+
+    private Position decodeBinaryPosition(Channel channel, SocketAddress remoteAddress, ByteBuf buf, long mask) {
+        Position position = new Position(getProtocolName());
+
+        if (BitUtil.check(mask, 1)) {
+            position.set(Position.KEY_STATUS, buf.readUnsignedInt());
+        }
+
+        String id;
+        if (BitUtil.check(mask, 23)) {
+            id = buf.toString(buf.readerIndex(), 8, StandardCharsets.US_ASCII).trim();
+            buf.skipBytes(8);
+        } else if (BitUtil.check(mask, 2)) {
+            id = buf.toString(buf.readerIndex(), 22, StandardCharsets.US_ASCII).trim();
+            buf.skipBytes(22);
+        } else {
+            LOGGER.warn("No device id field");
+            return null;
+        }
+        DeviceSession deviceSession = getDeviceSession(channel, remoteAddress, id);
+        if (deviceSession == null) {
+            return null;
+        }
+        position.setDeviceId(deviceSession.getDeviceId());
+
+        if (BitUtil.check(mask, 3)) {
+            position.set(Position.PREFIX_IO + 1, buf.readUnsignedShort());
+        }
+
+        if (BitUtil.check(mask, 4)) {
+            position.set(Position.PREFIX_ADC + 1, buf.readUnsignedShort());
+        }
+
+        if (BitUtil.check(mask, 5)) {
+            position.set(Position.PREFIX_ADC + 2, buf.readUnsignedShort());
+        }
+
+        if (BitUtil.check(mask, 7)) {
+            buf.readUnsignedByte(); // function category
+        }
+
+        DateBuilder dateBuilder = new DateBuilder();
+
+        if (BitUtil.check(mask, 8)) {
+            dateBuilder.setDateReverse(
+                    buf.readUnsignedByte(), buf.readUnsignedByte(), buf.readUnsignedByte());
+        }
+
+        if (BitUtil.check(mask, 9)) {
+            position.setValid(buf.readUnsignedByte() == 1); // gps status
+        }
+
+        if (BitUtil.check(mask, 10)) {
+            position.setLatitude(convertCoordinate(buf.readUnsignedInt()));
+        }
+
+        if (BitUtil.check(mask, 11)) {
+            position.setLongitude(convertCoordinate(buf.readUnsignedInt()));
+        }
+
+        if (BitUtil.check(mask, 12)) {
+            position.setSpeed(buf.readUnsignedShort() / 10.0);
+        }
+
+        if (BitUtil.check(mask, 13)) {
+            position.setCourse(buf.readUnsignedShort() / 10.0);
+        }
+
+        if (BitUtil.check(mask, 14)) {
+            dateBuilder.setTime(
+                    buf.readUnsignedByte(), buf.readUnsignedByte(), buf.readUnsignedByte());
+        }
+
+        position.setTime(dateBuilder.getDate());
+
+        if (BitUtil.check(mask, 15)) {
+            position.setAltitude(buf.readMedium());
+        }
+
+        if (BitUtil.check(mask, 16)) {
+            position.set(Position.KEY_SATELLITES, buf.readUnsignedByte());
+        }
+
+        if (BitUtil.check(mask, 17)) {
+            position.set(Position.KEY_BATTERY, buf.readUnsignedShort());
+        }
+
+        if (BitUtil.check(mask, 20)) {
+            position.set(Position.KEY_ODOMETER_TRIP, buf.readUnsignedInt());
+        }
+
+        if (BitUtil.check(mask, 21)) {
+            position.set(Position.KEY_ODOMETER, buf.readUnsignedInt());
+        }
+
+        if (BitUtil.check(mask, 22)) {
+            buf.skipBytes(6); // time of message generation
+        }
+
+        if (BitUtil.check(mask, 24)) {
+            position.set(Position.KEY_POWER, buf.readUnsignedShort() * 0.001);
+        }
+
+        if (BitUtil.check(mask, 25)) {
+            buf.skipBytes(18); // gps overspeed
+        }
+
+        if (BitUtil.check(mask, 26)) {
+            buf.skipBytes(54); // cell information
+        }
+
+        if (BitUtil.check(mask, 28)) {
+            position.set(Position.KEY_INDEX, buf.readUnsignedShort());
+        }
+
+        return position;
+    }
+
 
 }
